@@ -13,4 +13,4 @@
 ## Entrega 2
 - Archivo: `02_preprocesado.ipynb`
 - Objetivo: Mostrar cómo se carga el archivo train.csv de la competencia y realizas las operaciones de limpieza y preprocesado de datos que necesites (p.ej. convertir columnas en one-hot, normalizar valores de rangos, imputar datos faltantes, etc.)
-- Link del video: https://www.youtube.com/watch?v=nHxP0fYPDxw
+- Link del video: https://youtu.be/GNcdxSJlxgM
