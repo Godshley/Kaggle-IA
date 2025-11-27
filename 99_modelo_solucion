@@ -1,0 +1,131 @@
+import os
+import json
+import pandas as pd
+import numpy as np
+
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.feature_selection import VarianceThreshold
+
+os.environ['KAGGLE_CONFIG_DIR'] = "."
+
+!kaggle competitions download -c udea-ai-4-eng-20252-pruebas-saber-pro-colombia
+
+!unzip udea-ai-4-eng-20252-pruebas-saber-pro-colombia.zip
+
+
+train = pd.read_csv("train.csv")
+test = pd.read_csv("test.csv")
+
+TARGET = "RENDIMIENTO_GLOBAL"
+ID = "ID"
+
+X = train.drop(columns=[TARGET])
+y = train[TARGET]
+X_test = test.copy()
+
+print("Datos cargados. Shapes:", X.shape, X_test.shape)
+
+
+num_cols = X.select_dtypes(include=['int64','float64']).columns.tolist()
+cat_cols = X.select_dtypes(include=['object']).columns.tolist()
+
+print(f"Numéricas: {len(num_cols)} | Categóricas: {len(cat_cols)}")
+
+
+num_imputer = SimpleImputer(strategy="mean")
+cat_imputer = SimpleImputer(strategy="most_frequent")
+
+X[num_cols] = num_imputer.fit_transform(X[num_cols])
+X_test[num_cols] = num_imputer.transform(X_test[num_cols])
+
+X[cat_cols] = cat_imputer.fit_transform(X[cat_cols])
+X_test[cat_cols] = cat_imputer.transform(X_test[cat_cols])
+
+print("Imputación completada.")
+
+
+
+label_enc = LabelEncoder()
+label_cols = [c for c in cat_cols if X[c].nunique() <= 10]
+
+for col in label_cols:
+    X[col] = label_enc.fit_transform(X[col])
+    X_test[col] = label_enc.transform(X_test[col])
+
+print("Columnas codificadas con LabelEncoder:", label_cols)
+
+
+
+onehot_cols = [c for c in cat_cols if c not in label_cols]
+
+X = pd.get_dummies(X, columns=onehot_cols, drop_first=True)
+X_test = pd.get_dummies(X_test, columns=onehot_cols, drop_first=True)
+
+X, X_test = X.align(X_test, join="left", axis=1, fill_value=0)
+
+print("OHE + alineación completadas. Nuevas shapes:")
+print(X.shape, X_test.shape)
+
+
+# =============================================
+# ELIMINAR COLUMNAS CONSTANTES Y CUASI-CONSTANTES
+# =============================================
+
+# 1. Eliminar columnas constantes
+cols_before = X.shape[1]
+constant_cols = [c for c in X.columns if X[c].nunique() == 1]
+
+X = X.drop(columns=constant_cols)
+X_test = X_test.drop(columns=constant_cols, errors="ignore")
+
+print(f"Columnas eliminadas por ser constantes: {len(constant_cols)}")
+
+# 2. Eliminar columnas cuasi-constantes (más del 99.9% iguales)
+quasi_constant_cols = []
+
+for col in X.columns:
+    top_freq = X[col].value_counts(normalize=True, dropna=False).iloc[0]
+    if top_freq > 0.999:
+        quasi_constant_cols.append(col)
+
+X = X.drop(columns=quasi_constant_cols)
+X_test = X_test.drop(columns=quasi_constant_cols, errors="ignore")
+
+print(f"Columnas cuasi-constantes eliminadas (>99.9% igual): {len(quasi_constant_cols)}")
+print(f"Shape final después de reducción ligera: {X.shape}")
+
+
+scaler = StandardScaler()
+X[num_cols] = scaler.fit_transform(X[num_cols])
+X_test[num_cols] = scaler.transform(X_test[num_cols])
+
+print("Escalado completado.")
+
+
+model = RandomForestClassifier(
+    n_estimators=120,       # <--- menos árboles (= velocidad)
+    max_depth=20,           # <--- limita crecimiento
+    min_samples_split=5,    # <--- menos divisiones pequeñas
+    n_jobs=-1,
+    random_state=42
+)
+
+print("Entrenando modelo...")
+model.fit(X, y)
+print("Entrenamiento completado.")
+
+test_pred = model.predict(X_test)
+
+submission = pd.DataFrame({
+    ID: test[ID],
+    TARGET: test_pred
+})
+
+submission.to_csv("submission.csv", index=False)
+submission.head()
+
+!kaggle competitions submit -c udea-ai-4-eng-20252-pruebas-saber-pro-colombia -f submission.csv -m "Modelo solución optimizado"
