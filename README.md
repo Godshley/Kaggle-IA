@@ -14,3 +14,8 @@
 - Archivo: `02_preprocesado.ipynb`
 - Objetivo: Mostrar cómo se carga el archivo train.csv de la competencia y realizas las operaciones de limpieza y preprocesado de datos que necesites (p.ej. convertir columnas en one-hot, normalizar valores de rangos, imputar datos faltantes, etc.)
 - Link del video: https://youtu.be/GNcdxSJlxgM
+
+## Entrega Final
+- Archivos: `99_modelo_solucion.ipynb`, `03_modelo_con_preprocesado_+_SMV.ipynb`, `04_modelo_con_preprocesado_y_XGBBoost.ipynb`
+
+- Link del video: http://youtube.com/watch?v=szXLq4ppopc
